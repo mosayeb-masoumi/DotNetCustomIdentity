@@ -1,0 +1,795 @@
+1- create mvc project by the name of CustomIdentity
+---------------
+2- add below libraries
+
+Microsoft.EntityFrameworkCore
+Microsoft.EntityFrameworkCore.Tools
+Microsoft.EntityFrameworkCore.SqlServer
+Microsoft.AspNetCore.Identity.EntityFrameworkCore
+---------------------
+
+3- database
+
+create Data fodlder / add/ class/ name= AppDbContext
+
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace CustomIdentity.Data
+{
+    public class AppDbContext : IdentityDbContext<AppUser>
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
+            
+        }
+    }
+}
+------------------------------------
+
+4- crrate model by name of AppUser
+models folder/ add / class / AppUser
+
+using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
+
+namespace CustomIdentity.Models
+{
+    public class AppUser : IdentityUser
+    {
+        [StringLength(100)]
+        [MaxLength(100)]
+        [Required]
+        public string? Name { get; set; }
+        public string? Address { get; set; }
+    }
+}
+---------------------------
+
+5- add connectionString for db 
+goto appsetting.json
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost\\SQLExpress;Database=MyAppDb;Trusted_Connection=true;TrustServerCertificate=true;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+-------------------------------------
+
+6-goto program.cs to register our db connection there
+
+add these 2 lines:
+1-builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+time : 12':20"
+2-builder.Services.AddIdentity<AppUser , IdentityRole>(
+    options =>
+    {
+        options.Password.RequiredUniqueChars = 0;
+        options.Password.RequireUppercase = false;
+        options.Password.RequiredLength = 8;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireLowercase = false;
+    }
+    )
+    .AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
+
+the full code of it will be :
+using CustomIdentity.Data;
+using Microsoft.EntityFrameworkCore;
+using System;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddIdentity<AppUser , IdentityRole>(
+    options =>
+    {
+        options.Password.RequiredUniqueChars = 0;
+        options.Password.RequireUppercase = false;
+        options.Password.RequiredLength = 8;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireLowercase = false;
+    }
+    )
+    .AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapStaticAssets();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
+
+
+app.Run();
+--------------------------------------------------------
+7-
+PM> Add-Migration "Initial migration"
+PM> Update-Database
+
+--------------------------------------------------------
+
+8- create 2 viewModels login and register views
+
+root/new folder/ byname of ViewModels /add / class / LoginVM
+                                     /add / class / RegisterVM
+
+LoginVM:
+using System.ComponentModel.DataAnnotations;
+
+namespace CustomIdentity.ViewModels
+{
+    public class LoginVM
+    {
+
+        [Required(ErrorMessage = "Username is required!")]
+        public string? Username { get; set; }
+
+        [Required(ErrorMessage = "Password is required!")]
+        [DataType(DataType.Password)]
+        public string? Password { get; set; }
+
+        [Display(Name = "Remember Me")]
+        public bool RememberMe { get; set; }
+    }
+}
+
+
+RegisterVM:
+using System.ComponentModel.DataAnnotations;
+
+namespace CustomIdentity.ViewModels
+{
+    public class RegisterVM
+    {
+        [Required]
+        public string? Name { get; set; }
+
+        [Required]
+        [DataType(DataType.EmailAddress)]
+        public string? Email { get; set; }
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string? Password { get; set; }
+
+        [Required]
+        [DataType(DataType.Password)]
+        [Compare("Password",ErrorMessage ="Password don't match")]
+        public string? ConfirmPassword { get; set; }
+
+        [DataType(DataType.MultilineText)]
+        public string? Address { get; set; }
+    }
+}
+---------------------------------------------------
+
+9- create controller by name of "AccountController"
+using Microsoft.AspNetCore.Mvc;
+
+namespace CustomIdentity.Controllers
+{
+    public class AccountController : Controller
+    {
+        public IActionResult Login()
+        {
+            return View();
+        }
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+        public IActionResult Logout()
+        {
+            return View();
+        }
+    }
+}
+
+now make view for Register first, Click on Register() to select it then right click /add View/
+Razor view empty/ add /Register
+
+now we can see root/Views/Account/Register.cshtml
+
+inside the register.cshtml we'll have 
+@using CustomIdentity.ViewModels
+@model RegisterVM
+
+
+first we add @model LoginVM then we will click on LoginVM then Alt/Enter to import it
+
+-----------------------
+time 18':52"
+do the same for LoginVM
+
+@using CustomIdentity.ViewModels
+@model LoginVM
+------------------------
+
+ 10- compelete login.cshtml:
+
+@using CustomIdentity.ViewModels
+@model LoginVM
+
+@{
+	ViewData["Title"] = "Login";
+}
+
+<dive class="row d-flex align-items-center justify-content-center">
+
+	<div class="col-md-3 card p-3">
+		<h2 class="text-center text-info">Login</h2>
+		<form asp-action="Login" method="post">
+			<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+			<div class="mb-1">
+				<label asp-for="Username" class="control-label"></label>
+				<input asp-for="Username" class="form-control"/>
+				<span asp-validation-for="Username" class="text-danger"></span>
+			</div>
+			<div class="mb-1">
+				<label asp-for="Password" class="control-label"></label>
+				<input asp-for="Password" class="form-control" />
+				<span asp-validation-for="Password" class="text-danger"></span>
+			</div>
+
+			<div class="mb-1 form-check">
+				<label class="form-check-label">
+					<input asp-for="RememberMe" class="form-check-input"/> @Html.DisplayNameFor(a => a.RememberMe)
+				</label>
+			</div>
+
+			<div class="row">
+				<dive class="col-8">
+					<a asp-action="Register" class="text-decoration-none float-start">Don't have account?'</a>
+				</dive>
+
+				<div class="col-4">
+					<input type="submit" value="Login" class="btn btn-primary btn-sm float-end"/>
+				</div>
+			</div>
+
+        </form>
+	</div>
+
+</dive>
+
+for test of it in right column root/Views/Account/Login.cshtml right click on it select "View in browser"
+---------------------------------------------------------------------------
+ 11- goto AccountController and make post action for login
+
+first add it in controller :
+ private readonly SignInManager<AppUser> signInManager;
+
+ public AccountController(SignInManager<AppUser> signInManager)
+ {
+     this.signInManager = signInManager;
+ }
+
+
+then:
+ [HttpPost]
+ public async Task<IActionResult> Login(LoginVM model)
+ {
+     if (ModelState.IsValid) { 
+         //login
+         var result = await signInManager.PasswordSignInAsync(model.Username!, model.Password!,model.RememberMe,false);
+         if (result.Succeeded) {
+             return RedirectToAction("Index", "Home");
+         }
+         ModelState.AddModelError("", "Invalid login attempt");
+         return View(model);
+     }
+     return View(model);
+ }
+
+then the controller till now is like below :
+
+using CustomIdentity.ViewModels;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CustomIdentity.Controllers
+{
+    public class AccountController : Controller
+    {
+        private readonly SignInManager<AppUser> signInManager;
+
+        public AccountController(SignInManager<AppUser> signInManager)
+        {
+            this.signInManager = signInManager;
+        }
+
+        public IActionResult Login()
+        {
+            return View();
+        }
+
+       [HttpPost] // sooooo important
+       public async Task<IActionResult> Login(LoginVM model)
+        {
+         if (ModelState.IsValid) { 
+        //login
+        var result = await signInManager.PasswordSignInAsync(model.Username!, model.Password!,model.RememberMe,false);
+        if (result.Succeeded) {
+            return RedirectToAction("Index", "Home");
+        }
+        ModelState.AddModelError("", "Invalid login attempt");
+        return View(model);
+        }
+        return View(model);
+      }
+
+
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+        public IActionResult Logout()
+        {
+            return View();
+        }
+    }
+}
+------------------------------------------
+
+12 - now goto folde Controllers/HomeController / and add   [Authorize]
+
+home controller will be :
+
+using System.Diagnostics;
+using CustomIdentity.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CustomIdentity.Controllers
+{
+    [Authorize] // ====> has been added
+    public class HomeController : Controller
+    {
+        private readonly ILogger<HomeController> _logger;
+
+     
+        public HomeController(ILogger<HomeController> logger)
+        {
+            _logger = logger;
+        }
+
+        public IActionResult Index()
+        {
+            return View();
+        }
+...
+
+now if we run the project we can see home that has 2 tap Home and Privacy in top left corner (means these 2 classes need  authorization)
+if we click on each of them and user is not logged in it redirects to login page
+----------------------------------------------
+13 - run and test 
+ if we write a non formted emil it's shown error
+or if we leave email and password blank then click on login button , it shows error red color below each textField
+----------------------------------------------
+
+14- now if we click on login button it rendered the page (for example if we enter a non formatted gmail address and then click on login button
+we will see the page rendered the show error message below email textFieled , for preventing renderening the page 
+in Login.cshtml  we add below code:
+
+@section Scripts{
+	@{
+		await Html.RenderPartialAsync("_ValidationScriptsPartial");
+	}
+}
+
+"_ValidationScriptsPartial" to find this name goto root/shared folder/ and we can see the name then copy it and paste in our codes
+
+----------
+
+then the full code of Login.cshtml is :
+
+@using CustomIdentity.ViewModels
+@model LoginVM
+
+@{
+	ViewData["Title"] = "Login";
+}
+
+<dive class="row d-flex align-items-center justify-content-center">
+
+	<div class="col-md-3 card p-3">
+		<h2 class="text-center text-info">Login</h2>
+		<form asp-action="Login" method="post">
+			<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+			<div class="mb-1">
+				<label asp-for="Username" class="control-label"></label>
+				<input asp-for="Username" class="form-control"/>
+				<span asp-validation-for="Username" class="text-danger"></span>
+			</div>
+			<div class="mb-1">
+				<label asp-for="Password" class="control-label"></label>
+				<input asp-for="Password" class="form-control" />
+				<span asp-validation-for="Password" class="text-danger"></span>
+			</div>
+
+			<div class="mb-1 form-check">
+				<label class="form-check-label">
+					<input asp-for="RememberMe" class="form-check-input"/> @Html.DisplayNameFor(a => a.RememberMe)
+				</label>
+			</div>
+
+			<div class="row">
+				<dive class="col-8">
+					<a asp-action="Register" class="text-decoration-none float-start">Don't have account?'</a>
+				</dive>
+
+				<div class="col-4">
+					<input type="submit" value="Login" class="btn btn-primary btn-sm float-end" />
+				</div>
+			</div>
+
+		</form>
+	</div>
+
+</dive>
+
+@section Scripts{
+	@{
+		await Html.RenderPartialAsync("_ValidationScriptsPartial");
+	}
+}
+---------------------------------------------------------------
+
+15 - now design Register.cshtml
+
+@using CustomIdentity.ViewModels
+@model RegisterVM
+
+@{
+	ViewData["Title"] = "Register";
+}
+
+<dive class="row d-flex align-items-center justify-content-center">
+
+	<div class="col-md-4 card p-3">
+		<h2 class="text-center text-info">Register</h2>
+		<form asp-action="Register" method="post">
+			<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+			<div class="mb-1">
+				<label asp-for="Name" class="control-label"></label>
+				<input asp-for="Name" class="form-control"/>
+				<span asp-validation-for="Name" class="text-danger"></span>
+			</div>
+
+			<div class="mb-1">
+				<label asp-for="Email" class="control-label"></label>
+				<input asp-for="Email" class="form-control" />
+				<span asp-validation-for="Email" class="text-danger"></span>
+			</div>
+
+			<div class="mb-1">
+				<label asp-for="Password" class="control-label"></label>
+				<input asp-for="Password" class="form-control" />
+				<span asp-validation-for="Password" class="text-danger"></span>
+			</div>
+
+			<div class="mb-1">
+				<label asp-for="ConfirmPassword" class="control-label"></label>
+				<input asp-for="ConfirmPassword" class="form-control" />
+				<span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+			</div>
+
+			<div class="mb-1">
+				<label asp-for="Address" class="control-label"></label>
+				<textarea asp-for="Address" class="form-control" rows="2"></textarea>
+				<span asp-validation-for="Address" class="text-danger"></span>
+			</div>
+
+
+			<div class="row">
+				<dive class="col-8">
+					<a asp-action="Login" class="text-decoration-none float-start">Have account?'</a>
+				</dive>
+
+				<div class="col-4">
+					<input type="submit" value="Register" class="btn btn-primary btn-sm float-end" />
+				</div>
+			</div>
+
+		</form>
+	</div>
+
+</dive>
+
+@section Scripts{
+	@{
+		await Html.RenderPartialAsync("_ValidationScriptsPartial");
+	}
+}
+
+test it in browser ; right click on root/Register.cshtml/View in browser
+----------------------------------------------------------
+
+16 - goto AccountController now add Register post action and signOut action in AccountController
+
+befor adding it , we first add theses
+lines in AccountController:
+
+1- private readonly UserManager<AppUser> userManager and add it in constructor;
+2- and the constructor of AccountController will ne like it:
+ public AccountController(SignInManager<AppUser> signInManager, UserManager<AppUser> userManager)
+ {
+     this.signInManager = signInManager;
+     this.userManager = userManager;
+ }
+
+-------
+16.1
+regiater action:
+ [HttpPost]
+ public async Task<IActionResult> Register(RegisterVM model)
+ {
+     if (ModelState.IsValid)
+     {
+         AppUser user = new()
+         {
+             Name = model.Name,
+             UserName = model.Email,
+             Email = model.Email,
+             Address = model.Address,
+         };
+
+         var result = await userManager.CreateAsync(user,model.Password!);
+
+         if (result.Succeeded) {
+             await signInManager.SignInAsync(user, false);
+             return RedirectToAction("Index", "Home");
+         }
+
+         foreach (var error in result.Errors) 
+         { 
+
+          ModelState.AddModelError("",error.Description);
+
+         }
+     }
+
+     return View(model);
+ }
+----------------
+16.2
+ public async Task<IActionResult> Logout()
+ {
+     await signInManager.SignOutAsync();
+     return RedirectToAction(nameof(HomeController.Index));
+ }
+
+------------
+then the full code of controller till now is :
+
+using CustomIdentity.Models;
+using CustomIdentity.ViewModels;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CustomIdentity.Controllers
+{
+    public class AccountController : Controller
+    {
+        private readonly SignInManager<AppUser> signInManager;
+        private readonly UserManager<AppUser> userManager;
+
+        public AccountController(SignInManager<AppUser> signInManager, UserManager<AppUser> userManager)
+        {
+            this.signInManager = signInManager;
+            this.userManager = userManager;
+        }
+
+        public IActionResult Login()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Login(LoginVM model)
+        {
+            if (ModelState.IsValid) { 
+                //login
+                var result = await signInManager.PasswordSignInAsync(model.Username!, model.Password!,model.RememberMe,false);
+                if (result.Succeeded) {
+                    return RedirectToAction("Index", "Home");
+                }
+                ModelState.AddModelError("", "Invalid login attempt");
+                return View(model);
+            }
+            return View(model);
+        }
+
+
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Register(RegisterVM model)
+        {
+            if (ModelState.IsValid)
+            {
+                AppUser user = new()
+                {
+                    Name = model.Name,
+                    UserName = model.Email,
+                    Email = model.Email,
+                    Address = model.Address,
+                };
+
+                var result = await userManager.CreateAsync(user,model.Password!);
+
+                if (result.Succeeded) {
+                    await signInManager.SignInAsync(user, false);
+                    return RedirectToAction("Index", "Home");
+                }
+
+                foreach (var error in result.Errors) 
+                { 
+
+                 ModelState.AddModelError("",error.Description);
+
+                }
+            }
+
+            return View(model);
+        }
+  
+      public async Task<IActionResult> Logout()
+       {
+       await signInManager.SignOutAsync();
+       return RedirectToAction("Index" , "Home");
+       }
+
+
+    }
+}
+--------------------------------
+17- now we want to add Nav Bar :
+ goto root/Views/Shared/and add new view/right click/add/view/rezor view empty/ add this name "_LoginPartial"
+the _LoginPartial is: (to get help visit "https://getbootstrap.com/docs/5.3/components/navbar/")
+
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<AppUser> signInManager
+
+<u class="navbar-nav">
+
+	@if(signInManager.IsSignedIn(User))
+	{
+		<li class="nav-item dropdown">
+			<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+				@User.Identity!.Name!
+			</a>
+			<ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+				<li>
+					<a class="dropdown-item" asp-action="Logout" asp-controller="Account">
+						Logout
+					</a>
+				</li>				
+			</ul>
+		</li>
+	}
+	else
+	{
+		<li class="nav-item">
+			<a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Register">Register</a>
+		</li>
+
+		<li class="nav-item">
+			<a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Login">Login</a>
+		</li>
+	}
+
+</u>
+
+ 
+-------------------------
+
+18- now we need to register _LoginPartial.cshtml in _layout.cshtml, for doing that:
+now goto root/Views/Shared/_layout.cshtml   inside body section we add: 
+
+ <partial name="_LoginPartial"/>
+
+
+the full code of _layout.cshtml  will be :
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - CustomIdentity</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/CustomIdentity.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">CustomIdentity</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                        </li>
+                    </ul>
+                    <partial name="_LoginPartial"/>  // ================> we added this line
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2024 - CustomIdentity - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+-------------------------------
+ 19- now when we run the project at first time we are logout and we can see 2 items register an login are appreared in top right corner
+and when we are logged in, the email address will be appear in top right corner with a drop down that we can logout.
+
+
+
+
+
+
+
+
+
+
+
+
